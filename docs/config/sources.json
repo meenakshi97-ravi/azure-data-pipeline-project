@@ -1,0 +1,15 @@
+{
+  "sources": [
+    {
+      "source_id": "nyc311",
+      "base_url": "https://data.cityofnewyork.us/resource/erm2-nwe9.json",
+      "watermark_column": ":updated_at",
+      "window_days": 30,
+      "overlap_minutes": 60,
+      "page_size": 10000,
+      "backfill_start_date": "2026-10-04T00:00:00",
+      "target_path": "nyc311",
+      "is_active": true
+    }
+  ]
+}
