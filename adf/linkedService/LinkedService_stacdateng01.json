@@ -1,0 +1,10 @@
+{
+	"name": "LinkedService_stacdateng01",
+	"properties": {
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://stacdateng01.dfs.core.windows.net/"
+		}
+	}
+}
