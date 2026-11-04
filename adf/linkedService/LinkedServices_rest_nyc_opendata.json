@@ -1,0 +1,12 @@
+{
+	"name": "LinkedServices_rest_nyc_opendata",
+	"properties": {
+		"annotations": [],
+		"type": "RestService",
+		"typeProperties": {
+			"url": "https://data.cityofnewyork.us",
+			"enableServerCertificateValidation": true,
+			"authenticationType": "Anonymous"
+		}
+	}
+}
