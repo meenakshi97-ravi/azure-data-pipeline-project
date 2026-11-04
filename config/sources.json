@@ -2,7 +2,7 @@
   "sources": [
     {
       "source_id": "nyc311",
-      "base_url": "https://data.cityofnewyork.us/resource/erm2-nwe9.json",
+      "relative_url": "/resource/erm2-nwe9.json",
       "watermark_column": ":updated_at",
       "window_days": 30,
       "overlap_minutes": 60,
