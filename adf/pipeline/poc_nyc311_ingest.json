@@ -110,7 +110,161 @@
 					"secureOutput": false,
 					"secureInput": false
 				},
-				"userProperties": []
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "HttpReadSettings",
+							"requestMethod": "GET"
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "ds_http_nyc311",
+						"type": "DatasetReference",
+						"parameters": {
+							"relative_url": {
+								"value": "@concat(activity('Lookup config').output.firstRow.sources[0].relative_url, '?$select=count(*)&$where=', variables('v_where'))",
+								"type": "Expression"
+							}
+						}
+					}
+				}
+			},
+			{
+				"name": "Set page size",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Lookup count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "v_page_size",
+					"value": {
+						"value": "@string(activity('Lookup config').output.firstRow.sources[0].page_size)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set page count",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set page size",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "v_pages",
+					"value": {
+						"value": "@string(div(add(int(activity('Lookup count').output.firstRow.count), sub(int(variables('v_page_size')), 1)), int(variables('v_page_size'))))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ForEach page",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Set page count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@range(0, int(variables('v_pages')))",
+						"type": "Expression"
+					},
+					"batchCount": 4,
+					"activities": [
+						{
+							"name": "Copy page to bronz",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "RestSource",
+									"httpRequestTimeout": "00:01:40",
+									"requestInterval": "00.00:00:00.010",
+									"requestMethod": "GET",
+									"paginationRules": {
+										"supportRFC5988": "true"
+									}
+								},
+								"sink": {
+									"type": "JsonSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "JsonWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_rest_nyc311",
+									"type": "DatasetReference",
+									"parameters": {
+										"relative_url": {
+											"value": "@concat(activity('Lookup config').output.firstRow.sources[0].relative_url, '?$select=:*,*&$where=', variables('v_where'), '&$order=:updated_at,:id&$limit=', variables('v_page_size'), '&$offset=', string(mul(item(), int(variables('v_page_size')))))",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_bronze_json",
+									"type": "DatasetReference",
+									"parameters": {
+										"folder_path": {
+											"value": "@concat('nyc311/ingest_date=', formatDateTime(utcNow(), 'yyyy-MM-dd'), '/run_id=', pipeline().RunId)",
+											"type": "Expression"
+										},
+										"file_name": {
+											"value": "@concat('part-', string(item()), '.json')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
 			}
 		],
 		"variables": {
