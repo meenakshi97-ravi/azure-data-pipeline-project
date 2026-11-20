@@ -1,0 +1,27 @@
+{
+	"name": "ds_state_json",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LinkedService_stacdateng01",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "nyc311_watermark.json",
+				"folderPath": "state",
+				"fileSystem": "config"
+			}
+		},
+		"schema": {
+			"type": "object",
+			"properties": {
+				"last_watermark": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}

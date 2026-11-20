@@ -1,0 +1,129 @@
+{
+	"name": "poc_nyc311_ingest",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lookup config",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "ds_config_json",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Lookup state",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "ds_state_json",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Build where clause",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Lookup config",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Lookup state",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "v_where",
+					"value": {
+						"value": "@encodeUriComponent(concat('created_date >= ''', formatDateTime(addDays(utcNow(), mul(-1, int(activity('Lookup config').output.firstRow.sources[0].window_days))), 'yyyy-MM-dd'), 'T00:00:00''', ' AND :updated_at > ''', formatDateTime(addMinutes(activity('Lookup state').output.firstRow.last_watermark, mul(-1, int(activity('Lookup config').output.firstRow.sources[0].overlap_minutes))), 'yyyy-MM-ddTHH:mm:ss'), '.000Z'''))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Lookup count",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Build where clause",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": []
+			}
+		],
+		"variables": {
+			"v_where": {
+				"type": "String"
+			},
+			"v_page_size": {
+				"type": "String"
+			},
+			"v_pages": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}
