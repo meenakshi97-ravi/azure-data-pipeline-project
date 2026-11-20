@@ -1,0 +1,26 @@
+{
+	"name": "ds_http_nyc311",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LinkedService_http_nyc_opendata",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"relative_url": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "HttpServerLocation",
+				"relativeUrl": {
+					"value": "@dataset().relative_url",
+					"type": "Expression"
+				}
+			}
+		},
+		"schema": {}
+	}
+}
