@@ -44,7 +44,7 @@ Rows are fetched in pages of 10,000, ordered by `:updated_at, :id` so pages are 
 
 **Watermark value:** after a successful run, the watermark is set to the time the run *started*, not to the highest `:updated_at` seen. Rows changed at the source while a run is in progress could otherwise be skipped. The next run starts 60 minutes before that bookmark, so it re-reads anything changed in that gap, and the silver dedupe makes the repeats harmless. The state file is written only after every page has copied, so a failed run never moves the bookmark.
 
-**Observed behaviour (20 Nov 2026):** a first run with the bookmark at the seed date pulled the full 30-day window (about 340,000 rows in about 34 pages). Two runs made within about an hour afterwards each returned a count of 0, and the pipeline handled that cleanly: the paging loop was skipped, and the watermark and audit steps still ran. The source may refresh in one nightly batch, but this is based on a single sample and is to be confirmed with a morning run.
+**Observed behaviour (20 Nov 2026):** a first run with the bookmark at the seed date pulled the full 30-day window (about 340,000 rows in about 34 pages). Two runs made within about an hour afterwards each returned a count of 0, and the pipeline handled that cleanly: the paging loop was skipped, and the watermark and audit steps still ran. The source may refresh in one nightly batch, but this is based on a single sample and is to be confirmed with a morning run. A run the next morning returned 128,354 changed rows across 13 pages (12 full pages of 10,000 and a last page of 8,354), and the audit file for that run matched the count.
 
 **Observability (Planned):** each run will also log the number of rows updated outside the window, to show how often bulk updates happen.
 
@@ -141,6 +141,6 @@ Consecutive audit files show the bookmark moving forward: each run's `watermark_
 
 ## 12. Open questions
 
-- Does the source refresh in one nightly batch? To be confirmed with a morning run.
+-Does the source refresh in one nightly batch? Partly answered: on 21 Nov, two afternoon runs returned 0 changed rows, and a run the next morning returned 128,354 changed rows (13 pages). This supports a nightly batch, but it is a single overnight sample, so it needs a few more mornings to confirm.
 - How often does the source touch old rows in bulk? The audit table will show this over time.
 - Best way to run silver transformations within the credit window (Data Flow, currently planned).
