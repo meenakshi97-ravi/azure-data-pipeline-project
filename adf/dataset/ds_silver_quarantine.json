@@ -1,0 +1,201 @@
+{
+	"name": "ds_silver_quarantine",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LinkedService_stacdateng01",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "quarantine/nyc311",
+				"fileSystem": "silver"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": [
+			{
+				"name": "address_type",
+				"type": "UTF8"
+			},
+			{
+				"name": "agency",
+				"type": "UTF8"
+			},
+			{
+				"name": "agency_name",
+				"type": "UTF8"
+			},
+			{
+				"name": "bbl",
+				"type": "INT64"
+			},
+			{
+				"name": "borough",
+				"type": "UTF8"
+			},
+			{
+				"name": "bridge_highway_direction",
+				"type": "UTF8"
+			},
+			{
+				"name": "bridge_highway_name",
+				"type": "UTF8"
+			},
+			{
+				"name": "bridge_highway_segment",
+				"type": "UTF8"
+			},
+			{
+				"name": "city",
+				"type": "UTF8"
+			},
+			{
+				"name": "closed_date",
+				"type": "INT96"
+			},
+			{
+				"name": "community_board",
+				"type": "UTF8"
+			},
+			{
+				"name": "complaint_type",
+				"type": "UTF8"
+			},
+			{
+				"name": "council_district",
+				"type": "INT_16"
+			},
+			{
+				"name": "created_date",
+				"type": "INT96"
+			},
+			{
+				"name": "cross_street_1",
+				"type": "UTF8"
+			},
+			{
+				"name": "cross_street_2",
+				"type": "UTF8"
+			},
+			{
+				"name": "descriptor",
+				"type": "UTF8"
+			},
+			{
+				"name": "descriptor_2",
+				"type": "UTF8"
+			},
+			{
+				"name": "due_date",
+				"type": "INT96"
+			},
+			{
+				"name": "facility_type",
+				"type": "UTF8"
+			},
+			{
+				"name": "incident_address",
+				"type": "UTF8"
+			},
+			{
+				"name": "incident_zip",
+				"type": "INT_16"
+			},
+			{
+				"name": "intersection_street_1",
+				"type": "UTF8"
+			},
+			{
+				"name": "intersection_street_2",
+				"type": "UTF8"
+			},
+			{
+				"name": "landmark",
+				"type": "UTF8"
+			},
+			{
+				"name": "latitude",
+				"type": "DOUBLE"
+			},
+			{
+				"name": "location_type",
+				"type": "UTF8"
+			},
+			{
+				"name": "longitude",
+				"type": "DOUBLE"
+			},
+			{
+				"name": "open_data_channel_type",
+				"type": "UTF8"
+			},
+			{
+				"name": "park_borough",
+				"type": "UTF8"
+			},
+			{
+				"name": "park_facility_name",
+				"type": "UTF8"
+			},
+			{
+				"name": "police_precinct",
+				"type": "UTF8"
+			},
+			{
+				"name": "resolution_action_updated_date",
+				"type": "INT96"
+			},
+			{
+				"name": "resolution_description",
+				"type": "UTF8"
+			},
+			{
+				"name": "road_ramp",
+				"type": "UTF8"
+			},
+			{
+				"name": "status",
+				"type": "UTF8"
+			},
+			{
+				"name": "street_name",
+				"type": "UTF8"
+			},
+			{
+				"name": "taxi_company_borough",
+				"type": "UTF8"
+			},
+			{
+				"name": "taxi_pick_up_location",
+				"type": "UTF8"
+			},
+			{
+				"name": "unique_key",
+				"type": "INT64"
+			},
+			{
+				"name": "vehicle_type",
+				"type": "UTF8"
+			},
+			{
+				"name": "x_coordinate_state_plane",
+				"type": "INT32"
+			},
+			{
+				"name": "y_coordinate_state_plane",
+				"type": "INT32"
+			},
+			{
+				"name": "updated_at",
+				"type": "INT96"
+			},
+			{
+				"name": "row_id",
+				"type": "UTF8"
+			}
+		]
+	}
+}
