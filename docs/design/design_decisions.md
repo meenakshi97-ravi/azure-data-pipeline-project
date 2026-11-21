@@ -84,9 +84,21 @@ Evidence in `docs/samples/311_recent_requests.json` and `docs/samples/311_bad_cl
 
 ## 8. Duplicate handling
 
-**Status: Planned**
+**Status: Built**
 
-The overlap window means some rows are pulled more than once. Silver keeps the latest version of each `unique_key`, ranked by `:updated_at`. Re-running a window therefore produces the same result (idempotent).
+The overlap window and repeated full-window runs mean the same request is landed in bronze more than once. Silver keeps the latest version of each `unique_key`, ranked by `updated_at` (a window function with `rowNumber()`, keeping row number 1). Re-running therefore produces the same silver result (idempotent).
+
+**First silver run (21 Nov 2026):**
+
+| Stage | Rows |
+|---|---|
+| Read from bronze | 797,254 |
+| Written to silver | 342,455 |
+| Duplicates removed | 454,799 (about 57%) |
+
+Silver has 45 columns. Seven source columns were dropped: the system columns (`:created_at`, `:version`, the `:@computed_region_*` columns) and the nested `location` object, whose coordinates are already in `latitude` and `longitude`.
+
+**Known v1 limitation:** silver is rebuilt from all of bronze on every run (the sink clears its folder), and bronze grows with each run. This is simple and correct at the current scale, but reads will slow as bronze grows. **Planned improvement:** read only the new run folders and merge them into silver by `unique_key`.
 
 ## 9. Data quality rules
 
