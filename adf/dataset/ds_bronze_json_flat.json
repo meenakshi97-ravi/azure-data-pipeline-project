@@ -1,0 +1,156 @@
+{
+	"name": "ds_bronze_json_flat",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LinkedService_stacdateng01",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileSystem": "bronze"
+			}
+		},
+		"schema": {
+			"type": "object",
+			"properties": {
+				":id": {
+					"type": "string"
+				},
+				":created_at": {
+					"type": "string"
+				},
+				":updated_at": {
+					"type": "string"
+				},
+				":version": {
+					"type": "string"
+				},
+				"unique_key": {
+					"type": "string"
+				},
+				"created_date": {
+					"type": "string"
+				},
+				"agency": {
+					"type": "string"
+				},
+				"agency_name": {
+					"type": "string"
+				},
+				"complaint_type": {
+					"type": "string"
+				},
+				"descriptor": {
+					"type": "string"
+				},
+				"incident_zip": {
+					"type": "string"
+				},
+				"incident_address": {
+					"type": "string"
+				},
+				"street_name": {
+					"type": "string"
+				},
+				"cross_street_1": {
+					"type": "string"
+				},
+				"cross_street_2": {
+					"type": "string"
+				},
+				"address_type": {
+					"type": "string"
+				},
+				"city": {
+					"type": "string"
+				},
+				"facility_type": {
+					"type": "string"
+				},
+				"status": {
+					"type": "string"
+				},
+				"resolution_description": {
+					"type": "string"
+				},
+				"resolution_action_updated_date": {
+					"type": "string"
+				},
+				"community_board": {
+					"type": "string"
+				},
+				"police_precinct": {
+					"type": "string"
+				},
+				"borough": {
+					"type": "string"
+				},
+				"open_data_channel_type": {
+					"type": "string"
+				},
+				"park_facility_name": {
+					"type": "string"
+				},
+				"park_borough": {
+					"type": "string"
+				},
+				"ingest_date": {
+					"type": "string"
+				},
+				"run_id": {
+					"type": "string"
+				},
+				":@computed_region_f5dn_yrer": {
+					"type": "string"
+				},
+				":@computed_region_yeji_bk3q": {
+					"type": "string"
+				},
+				":@computed_region_sbqj_enih": {
+					"type": "string"
+				},
+				":@computed_region_92fq_4b7q": {
+					"type": "string"
+				},
+				"intersection_street_1": {
+					"type": "string"
+				},
+				"intersection_street_2": {
+					"type": "string"
+				},
+				"council_district": {
+					"type": "string"
+				},
+				"x_coordinate_state_plane": {
+					"type": "string"
+				},
+				"y_coordinate_state_plane": {
+					"type": "string"
+				},
+				"latitude": {
+					"type": "string"
+				},
+				"longitude": {
+					"type": "string"
+				},
+				"location": {
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string"
+						},
+						"coordinates": {
+							"type": "array",
+							"items": {
+								"type": "number"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
