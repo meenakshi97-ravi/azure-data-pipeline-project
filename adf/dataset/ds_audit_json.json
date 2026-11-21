@@ -1,0 +1,70 @@
+{
+	"name": "ds_audit_json",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LinkedService_stacdateng01",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"file_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().file_name",
+					"type": "Expression"
+				},
+				"folderPath": "audit/nyc311",
+				"fileSystem": "config"
+			}
+		},
+		"schema": {
+			"type": "object",
+			"properties": {
+				"sources": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"source_id": {
+								"type": "string"
+							},
+							"relative_url": {
+								"type": "string"
+							},
+							"watermark_column": {
+								"type": "string"
+							},
+							"window_days": {
+								"type": "integer"
+							},
+							"overlap_minutes": {
+								"type": "integer"
+							},
+							"page_size": {
+								"type": "integer"
+							},
+							"backfill_start_date": {
+								"type": "string"
+							},
+							"target_path": {
+								"type": "string"
+							},
+							"is_active": {
+								"type": "boolean"
+							}
+						}
+					}
+				},
+				"last_watermark": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}

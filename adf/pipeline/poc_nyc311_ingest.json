@@ -344,6 +344,179 @@
 						"type": "DatasetReference"
 					}
 				]
+			},
+			{
+				"name": "Write audit row",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Update watermark",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"additionalColumns": [
+							{
+								"name": "run_id",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "source_id",
+								"value": {
+									"value": "@activity('Lookup config').output.firstRow.sources[0].source_id",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "started_at",
+								"value": {
+									"value": "@pipeline().TriggerTime",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "watermark_used",
+								"value": {
+									"value": "@activity('Lookup state').output.firstRow.last_watermark",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "rows_expected",
+								"value": {
+									"value": "@activity('Lookup count').output.firstRow.count",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "pages",
+								"value": {
+									"value": "@variables('v_pages')",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "status",
+								"value": {
+									"value": "Succeeded",
+									"type": "Expression"
+								}
+							}
+						],
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"path": "$['run_id']"
+								},
+								"sink": {
+									"path": "run_id"
+								}
+							},
+							{
+								"source": {
+									"path": "$['source_id']"
+								},
+								"sink": {
+									"path": "source_id"
+								}
+							},
+							{
+								"source": {
+									"path": "$['started_at']"
+								},
+								"sink": {
+									"path": "started_at"
+								}
+							},
+							{
+								"source": {
+									"path": "$['watermark_used']"
+								},
+								"sink": {
+									"path": "watermark_used"
+								}
+							},
+							{
+								"source": {
+									"path": "$['rows_expected']"
+								},
+								"sink": {
+									"path": "rows_expected"
+								}
+							},
+							{
+								"source": {
+									"path": "$['pages']"
+								},
+								"sink": {
+									"path": "pages"
+								}
+							},
+							{
+								"source": {
+									"path": "$['status']"
+								},
+								"sink": {
+									"path": "status"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_config_json",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_audit_json",
+						"type": "DatasetReference",
+						"parameters": {
+							"file_name": {
+								"value": "@concat(pipeline().RunId, '.json')",
+								"type": "Expression"
+							}
+						}
+					}
+				]
 			}
 		],
 		"variables": {
