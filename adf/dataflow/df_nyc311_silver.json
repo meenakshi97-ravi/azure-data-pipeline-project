@@ -178,7 +178,8 @@
 				"     preCommands: [],",
 				"     postCommands: [],",
 				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true) ~> sinkSilver",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('roundRobin', 5)) ~> sinkSilver",
 				"splitKey@rejected sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
@@ -233,7 +234,8 @@
 				"     preCommands: [],",
 				"     postCommands: [],",
 				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true) ~> sinkQuarantine",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sinkQuarantine",
 				"selIssues sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
@@ -289,7 +291,8 @@
 				"     preCommands: [],",
 				"     postCommands: [],",
 				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true) ~> sinkDqIssues"
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sinkDqIssues"
 			]
 		}
 	}
