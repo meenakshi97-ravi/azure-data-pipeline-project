@@ -1,0 +1,20 @@
+{
+	"name": "ds_gold_dim_location",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LinkedService_stacdateng01",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "nyc311/dim_location",
+				"fileSystem": "gold"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	}
+}
