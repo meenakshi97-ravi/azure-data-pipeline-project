@@ -66,15 +66,38 @@ Rows are fetched in pages of 10,000, ordered by `:updated_at, :id` so pages are 
 
 ## 6. Lake layers (medallion)
 
-**Status: Bronze built, silver and gold planned**
+**Status: Bronze, silver and gold built (v1)**
 
-| Layer | Container | Contents |
-|---|---|---|
-| Bronze | `bronze` | Raw API responses, unchanged, partitioned by ingest date and run id. Never edited, so any downstream bug can be replayed. |
-| Silver | `silver` | Typed, deduplicated Parquet with data quality flags. |
-| Gold | `gold` | Star schema: fact table of requests, with dimensions for agency, problem type, location, and date. |
+Gold is built by the data flow `df_nyc311_gold`, which reads silver and writes one fact table and four dimension tables as Parquet under `gold/nyc311/`. Every output folder is cleared and rebuilt on each run, so the result depends only on the current silver data.
 
-Bronze path pattern: `bronze/nyc311/ingest_date=YYYY-MM-DD/run_id=<id>/part-<n>.json`
+| Table | Grain | Key | Rows (22 Nov 2026) |
+|---|---|---|---|
+| `fact_service_request` | one row per request | `unique_key` | 364,526 |
+| `dim_agency` | one row per agency | `agency_key` | 14 |
+| `dim_problem` | one row per complaint type and descriptor | `problem_key` | 867 |
+| `dim_location` | one row per borough, zip code and city | `location_key` | 569 |
+| `dim_date` | one row per day on which requests were created | `date_key` (yyyymmdd) | 33 |
+
+**Reconciliation:** the fact table has exactly as many rows as silver had when gold ran (364,526). Gold applies no filters and no joins to the fact table, so any difference between the two would indicate a bug.
+
+### Decisions
+
+**Hashed keys instead of generated numbers.** Dimension keys are `md5` hashes of the natural key (for example `md5(complaint_type, descriptor)`). A key made from the data is the same on every run, so the fact table and its dimensions stay linked even though gold is rebuilt from scratch each time. Generated sequence numbers would change on every rebuild and break those links. `md5` was chosen over a shorter 32-bit hash because the collision risk of a 32-bit hash, small as it is, is avoidable. **Trade-off:** keys are 32-character strings, which take more space and join more slowly than integers. At this size that is not a problem.
+
+**Missing values become `UNKNOWN` before hashing.** A blank agency, borough, zip code or city is replaced with `UNKNOWN` first, so every fact row gets a valid dimension key and no key is ever null. `incident_zip` is read as a number from silver and is converted to text first, because zip codes are identifiers, not quantities.
+
+**Measures and flags carried into the fact table.** `resolution_hours` is the hours between `created_date` and `closed_date`, and is null for open requests. It was checked by hand against ten real rows, including a 25-minute request and a request open for about 368 hours. The three data quality flags from silver (`dq_future_closed`, `dq_closed_before_created`, `dq_bad_coords`) are kept in the fact table, so analysts can filter out suspect rows or measure how many there are.
+
+**Date keys.** `created_date_key` and `closed_date_key` are integers in `yyyyMMdd` form. `closed_date_key` is null for open requests.
+
+**Small output files.** Dimension sinks write a single file each, and the fact table is written as five files. The data flow's default of 200 partitions produced hundreds of tiny files in earlier runs.
+
+### Known limitations (v1)
+
+- **`dim_date` covers only the days on which requests were created.** A request closed on a day with no new requests would have no date dimension row for its `closed_date_key`. At roughly 10,000 requests a day this is unlikely, but it has not been tested. A complete calendar table is the proper fix.
+- **No history on dimensions.** Each dimension holds the current attributes only. If an agency name changes, the old name is overwritten. Slowly changing dimensions (type 2) are a planned extension.
+- **Gold is rebuilt in full on every run.** This is simple and correct at the current scale, but the cost grows with the size of silver.
+- **`dim_location` is built from text fields,** not from verified addresses, so spelling variations in a borough or city name would produce separate rows.
 
 ## 7. Schema handling
 
