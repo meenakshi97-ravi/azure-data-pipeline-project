@@ -756,10 +756,10 @@
 						"frequency": "Day",
 						"interval": 1,
 						"startTime": "2026-11-24T21:00:00",
-						"timeZone": "Central Standard Time",
+						"timeZone": "Eastern Standard Time",
 						"schedule": {
 							"minutes": [
-								10
+								30
 							],
 							"hours": [
 								16
