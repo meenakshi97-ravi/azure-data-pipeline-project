@@ -1,0 +1,1727 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "adf-dateng-poc"
+		},
+		"LinkedService_http_nyc_opendata_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://data.cityofnewyork.us"
+		},
+		"LinkedService_stacdateng01_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://stacdateng01.dfs.core.windows.net/"
+		},
+		"LinkedServices_rest_nyc_opendata_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://data.cityofnewyork.us"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/LinkedService_http_nyc_opendata')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "HttpServer",
+				"typeProperties": {
+					"url": "[parameters('LinkedService_http_nyc_opendata_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LinkedService_stacdateng01')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('LinkedService_stacdateng01_properties_typeProperties_url')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LinkedServices_rest_nyc_opendata')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "RestService",
+				"typeProperties": {
+					"url": "[parameters('LinkedServices_rest_nyc_opendata_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_audit_json')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"file_name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().file_name",
+							"type": "Expression"
+						},
+						"folderPath": "audit/nyc311",
+						"fileSystem": "config"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						"sources": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"source_id": {
+										"type": "string"
+									},
+									"relative_url": {
+										"type": "string"
+									},
+									"watermark_column": {
+										"type": "string"
+									},
+									"window_days": {
+										"type": "integer"
+									},
+									"overlap_minutes": {
+										"type": "integer"
+									},
+									"page_size": {
+										"type": "integer"
+									},
+									"backfill_start_date": {
+										"type": "string"
+									},
+									"target_path": {
+										"type": "string"
+									},
+									"is_active": {
+										"type": "boolean"
+									}
+								}
+							}
+						},
+						"last_watermark": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_bronze_json')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"folder_path": {
+						"type": "string"
+					},
+					"file_name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().file_name",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().folder_path",
+							"type": "Expression"
+						},
+						"fileSystem": "bronze"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_bronze_json_flat')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileSystem": "bronze"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						":id": {
+							"type": "string"
+						},
+						":created_at": {
+							"type": "string"
+						},
+						":updated_at": {
+							"type": "string"
+						},
+						":version": {
+							"type": "string"
+						},
+						"unique_key": {
+							"type": "string"
+						},
+						"created_date": {
+							"type": "string"
+						},
+						"agency": {
+							"type": "string"
+						},
+						"agency_name": {
+							"type": "string"
+						},
+						"complaint_type": {
+							"type": "string"
+						},
+						"descriptor": {
+							"type": "string"
+						},
+						"incident_zip": {
+							"type": "string"
+						},
+						"incident_address": {
+							"type": "string"
+						},
+						"street_name": {
+							"type": "string"
+						},
+						"cross_street_1": {
+							"type": "string"
+						},
+						"cross_street_2": {
+							"type": "string"
+						},
+						"address_type": {
+							"type": "string"
+						},
+						"city": {
+							"type": "string"
+						},
+						"facility_type": {
+							"type": "string"
+						},
+						"status": {
+							"type": "string"
+						},
+						"resolution_description": {
+							"type": "string"
+						},
+						"resolution_action_updated_date": {
+							"type": "string"
+						},
+						"community_board": {
+							"type": "string"
+						},
+						"police_precinct": {
+							"type": "string"
+						},
+						"borough": {
+							"type": "string"
+						},
+						"open_data_channel_type": {
+							"type": "string"
+						},
+						"park_facility_name": {
+							"type": "string"
+						},
+						"park_borough": {
+							"type": "string"
+						},
+						"ingest_date": {
+							"type": "string"
+						},
+						"run_id": {
+							"type": "string"
+						},
+						":@computed_region_f5dn_yrer": {
+							"type": "string"
+						},
+						":@computed_region_yeji_bk3q": {
+							"type": "string"
+						},
+						":@computed_region_sbqj_enih": {
+							"type": "string"
+						},
+						":@computed_region_92fq_4b7q": {
+							"type": "string"
+						},
+						"intersection_street_1": {
+							"type": "string"
+						},
+						"intersection_street_2": {
+							"type": "string"
+						},
+						"council_district": {
+							"type": "string"
+						},
+						"x_coordinate_state_plane": {
+							"type": "string"
+						},
+						"y_coordinate_state_plane": {
+							"type": "string"
+						},
+						"latitude": {
+							"type": "string"
+						},
+						"longitude": {
+							"type": "string"
+						},
+						"location": {
+							"type": "object",
+							"properties": {
+								"type": {
+									"type": "string"
+								},
+								"coordinates": {
+									"type": "array",
+									"items": {
+										"type": "number"
+									}
+								}
+							}
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_config_json')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "sources.json",
+						"fileSystem": "config"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						"sources": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"source_id": {
+										"type": "string"
+									},
+									"relative_url": {
+										"type": "string"
+									},
+									"watermark_column": {
+										"type": "string"
+									},
+									"window_days": {
+										"type": "integer"
+									},
+									"overlap_minutes": {
+										"type": "integer"
+									},
+									"page_size": {
+										"type": "integer"
+									},
+									"backfill_start_date": {
+										"type": "string"
+									},
+									"target_path": {
+										"type": "string"
+									},
+									"is_active": {
+										"type": "boolean"
+									}
+								}
+							}
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_dq_issues')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "dq_issues/nyc311",
+						"fileSystem": "silver"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": [
+					{
+						"name": "address_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "agency",
+						"type": "UTF8"
+					},
+					{
+						"name": "agency_name",
+						"type": "UTF8"
+					},
+					{
+						"name": "bbl",
+						"type": "INT64"
+					},
+					{
+						"name": "borough",
+						"type": "UTF8"
+					},
+					{
+						"name": "bridge_highway_direction",
+						"type": "UTF8"
+					},
+					{
+						"name": "bridge_highway_name",
+						"type": "UTF8"
+					},
+					{
+						"name": "bridge_highway_segment",
+						"type": "UTF8"
+					},
+					{
+						"name": "city",
+						"type": "UTF8"
+					},
+					{
+						"name": "closed_date",
+						"type": "INT96"
+					},
+					{
+						"name": "community_board",
+						"type": "UTF8"
+					},
+					{
+						"name": "complaint_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "council_district",
+						"type": "INT_16"
+					},
+					{
+						"name": "created_date",
+						"type": "INT96"
+					},
+					{
+						"name": "cross_street_1",
+						"type": "UTF8"
+					},
+					{
+						"name": "cross_street_2",
+						"type": "UTF8"
+					},
+					{
+						"name": "descriptor",
+						"type": "UTF8"
+					},
+					{
+						"name": "descriptor_2",
+						"type": "UTF8"
+					},
+					{
+						"name": "due_date",
+						"type": "INT96"
+					},
+					{
+						"name": "facility_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "incident_address",
+						"type": "UTF8"
+					},
+					{
+						"name": "incident_zip",
+						"type": "INT_16"
+					},
+					{
+						"name": "intersection_street_1",
+						"type": "UTF8"
+					},
+					{
+						"name": "intersection_street_2",
+						"type": "UTF8"
+					},
+					{
+						"name": "landmark",
+						"type": "UTF8"
+					},
+					{
+						"name": "latitude",
+						"type": "DOUBLE"
+					},
+					{
+						"name": "location_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "longitude",
+						"type": "DOUBLE"
+					},
+					{
+						"name": "open_data_channel_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "park_borough",
+						"type": "UTF8"
+					},
+					{
+						"name": "park_facility_name",
+						"type": "UTF8"
+					},
+					{
+						"name": "police_precinct",
+						"type": "UTF8"
+					},
+					{
+						"name": "resolution_action_updated_date",
+						"type": "INT96"
+					},
+					{
+						"name": "resolution_description",
+						"type": "UTF8"
+					},
+					{
+						"name": "road_ramp",
+						"type": "UTF8"
+					},
+					{
+						"name": "status",
+						"type": "UTF8"
+					},
+					{
+						"name": "street_name",
+						"type": "UTF8"
+					},
+					{
+						"name": "taxi_company_borough",
+						"type": "UTF8"
+					},
+					{
+						"name": "taxi_pick_up_location",
+						"type": "UTF8"
+					},
+					{
+						"name": "unique_key",
+						"type": "INT64"
+					},
+					{
+						"name": "vehicle_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "x_coordinate_state_plane",
+						"type": "INT32"
+					},
+					{
+						"name": "y_coordinate_state_plane",
+						"type": "INT32"
+					},
+					{
+						"name": "updated_at",
+						"type": "INT96"
+					},
+					{
+						"name": "row_id",
+						"type": "UTF8"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_gold_dim_agency')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "nyc311/dim_agency",
+						"fileSystem": "gold"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_gold_dim_data')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "nyc311/dim_date",
+						"fileSystem": "gold"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_gold_dim_location')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "nyc311/dim_location",
+						"fileSystem": "gold"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_gold_dim_problem')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "nyc311/dim_problem",
+						"fileSystem": "gold"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_gold_fact')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "nyc311/fact_service_request",
+						"fileSystem": "gold"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_http_nyc311')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_http_nyc_opendata",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"relative_url": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "HttpServerLocation",
+						"relativeUrl": {
+							"value": "@dataset().relative_url",
+							"type": "Expression"
+						}
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_http_nyc_opendata')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_rest_nyc311')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedServices_rest_nyc_opendata",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"relative_url": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": {
+						"value": "@dataset().relative_url",
+						"type": "Expression"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedServices_rest_nyc_opendata')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_silver_parquet')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "nyc311",
+						"fileSystem": "silver"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_silver_quarantine')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "quarantine/nyc311",
+						"fileSystem": "silver"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": [
+					{
+						"name": "address_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "agency",
+						"type": "UTF8"
+					},
+					{
+						"name": "agency_name",
+						"type": "UTF8"
+					},
+					{
+						"name": "bbl",
+						"type": "INT64"
+					},
+					{
+						"name": "borough",
+						"type": "UTF8"
+					},
+					{
+						"name": "bridge_highway_direction",
+						"type": "UTF8"
+					},
+					{
+						"name": "bridge_highway_name",
+						"type": "UTF8"
+					},
+					{
+						"name": "bridge_highway_segment",
+						"type": "UTF8"
+					},
+					{
+						"name": "city",
+						"type": "UTF8"
+					},
+					{
+						"name": "closed_date",
+						"type": "INT96"
+					},
+					{
+						"name": "community_board",
+						"type": "UTF8"
+					},
+					{
+						"name": "complaint_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "council_district",
+						"type": "INT_16"
+					},
+					{
+						"name": "created_date",
+						"type": "INT96"
+					},
+					{
+						"name": "cross_street_1",
+						"type": "UTF8"
+					},
+					{
+						"name": "cross_street_2",
+						"type": "UTF8"
+					},
+					{
+						"name": "descriptor",
+						"type": "UTF8"
+					},
+					{
+						"name": "descriptor_2",
+						"type": "UTF8"
+					},
+					{
+						"name": "due_date",
+						"type": "INT96"
+					},
+					{
+						"name": "facility_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "incident_address",
+						"type": "UTF8"
+					},
+					{
+						"name": "incident_zip",
+						"type": "INT_16"
+					},
+					{
+						"name": "intersection_street_1",
+						"type": "UTF8"
+					},
+					{
+						"name": "intersection_street_2",
+						"type": "UTF8"
+					},
+					{
+						"name": "landmark",
+						"type": "UTF8"
+					},
+					{
+						"name": "latitude",
+						"type": "DOUBLE"
+					},
+					{
+						"name": "location_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "longitude",
+						"type": "DOUBLE"
+					},
+					{
+						"name": "open_data_channel_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "park_borough",
+						"type": "UTF8"
+					},
+					{
+						"name": "park_facility_name",
+						"type": "UTF8"
+					},
+					{
+						"name": "police_precinct",
+						"type": "UTF8"
+					},
+					{
+						"name": "resolution_action_updated_date",
+						"type": "INT96"
+					},
+					{
+						"name": "resolution_description",
+						"type": "UTF8"
+					},
+					{
+						"name": "road_ramp",
+						"type": "UTF8"
+					},
+					{
+						"name": "status",
+						"type": "UTF8"
+					},
+					{
+						"name": "street_name",
+						"type": "UTF8"
+					},
+					{
+						"name": "taxi_company_borough",
+						"type": "UTF8"
+					},
+					{
+						"name": "taxi_pick_up_location",
+						"type": "UTF8"
+					},
+					{
+						"name": "unique_key",
+						"type": "INT64"
+					},
+					{
+						"name": "vehicle_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "x_coordinate_state_plane",
+						"type": "INT32"
+					},
+					{
+						"name": "y_coordinate_state_plane",
+						"type": "INT32"
+					},
+					{
+						"name": "updated_at",
+						"type": "INT96"
+					},
+					{
+						"name": "row_id",
+						"type": "UTF8"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_state_json')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LinkedService_stacdateng01",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "nyc311_watermark.json",
+						"folderPath": "state",
+						"fileSystem": "config"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						"last_watermark": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LinkedService_stacdateng01')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/poc_nyc311_ingest')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lookup config",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "ds_config_json",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "Lookup state",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "ds_state_json",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "Build where clause",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup config",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Lookup state",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "v_where",
+							"value": {
+								"value": "@encodeUriComponent(concat('created_date >= ''', formatDateTime(addDays(utcNow(), mul(-1, int(activity('Lookup config').output.firstRow.sources[0].window_days))), 'yyyy-MM-dd'), 'T00:00:00''', ' AND :updated_at > ''', formatDateTime(addMinutes(activity('Lookup state').output.firstRow.last_watermark, mul(-1, int(activity('Lookup config').output.firstRow.sources[0].overlap_minutes))), 'yyyy-MM-ddTHH:mm:ss'), '.000Z'''))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Lookup count",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Build where clause",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 3,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "HttpReadSettings",
+									"requestMethod": "GET"
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "ds_http_nyc311",
+								"type": "DatasetReference",
+								"parameters": {
+									"relative_url": {
+										"value": "@concat(activity('Lookup config').output.firstRow.sources[0].relative_url, '?$select=count(*)&$where=', variables('v_where'))",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					},
+					{
+						"name": "Set page size",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup count",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "v_page_size",
+							"value": {
+								"value": "@string(activity('Lookup config').output.firstRow.sources[0].page_size)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set page count",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Set page size",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "v_pages",
+							"value": {
+								"value": "@string(div(add(int(activity('Lookup count').output.firstRow.count), sub(int(variables('v_page_size')), 1)), int(variables('v_page_size'))))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach page",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Set page count",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@range(0, int(variables('v_pages')))",
+								"type": "Expression"
+							},
+							"batchCount": 4,
+							"activities": [
+								{
+									"name": "Copy page to bronz",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 3,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "RestSource",
+											"httpRequestTimeout": "00:01:40",
+											"requestInterval": "00.00:00:00.010",
+											"requestMethod": "GET",
+											"paginationRules": {
+												"supportRFC5988": "true"
+											}
+										},
+										"sink": {
+											"type": "JsonSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "JsonWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_rest_nyc311",
+											"type": "DatasetReference",
+											"parameters": {
+												"relative_url": {
+													"value": "@concat(activity('Lookup config').output.firstRow.sources[0].relative_url, '?$select=:*,*&$where=', variables('v_where'), '&$order=:updated_at,:id&$limit=', variables('v_page_size'), '&$offset=', string(mul(item(), int(variables('v_page_size')))))",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_bronze_json",
+											"type": "DatasetReference",
+											"parameters": {
+												"folder_path": {
+													"value": "@concat('nyc311/ingest_date=', formatDateTime(utcNow(), 'yyyy-MM-dd'), '/run_id=', pipeline().RunId)",
+													"type": "Expression"
+												},
+												"file_name": {
+													"value": "@concat('part-', string(item()), '.json')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Update watermark",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "ForEach page",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"additionalColumns": [
+									{
+										"name": "last_watermark",
+										"value": {
+											"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-ddTHH:mm:ss.fffZ')",
+											"type": "Expression"
+										}
+									}
+								],
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings",
+									"filePattern": "setOfObjects"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"path": "$['last_watermark']"
+										},
+										"sink": {
+											"path": "last_watermark"
+										}
+									}
+								],
+								"collectionReference": ""
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_config_json",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_state_json",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Write audit row",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Update watermark",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"additionalColumns": [
+									{
+										"name": "run_id",
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										}
+									},
+									{
+										"name": "source_id",
+										"value": {
+											"value": "@activity('Lookup config').output.firstRow.sources[0].source_id",
+											"type": "Expression"
+										}
+									},
+									{
+										"name": "started_at",
+										"value": {
+											"value": "@pipeline().TriggerTime",
+											"type": "Expression"
+										}
+									},
+									{
+										"name": "watermark_used",
+										"value": {
+											"value": "@activity('Lookup state').output.firstRow.last_watermark",
+											"type": "Expression"
+										}
+									},
+									{
+										"name": "rows_expected",
+										"value": {
+											"value": "@activity('Lookup count').output.firstRow.count",
+											"type": "Expression"
+										}
+									},
+									{
+										"name": "pages",
+										"value": {
+											"value": "@variables('v_pages')",
+											"type": "Expression"
+										}
+									},
+									{
+										"name": "status",
+										"value": {
+											"value": "Succeeded",
+											"type": "Expression"
+										}
+									}
+								],
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"path": "$['run_id']"
+										},
+										"sink": {
+											"path": "run_id"
+										}
+									},
+									{
+										"source": {
+											"path": "$['source_id']"
+										},
+										"sink": {
+											"path": "source_id"
+										}
+									},
+									{
+										"source": {
+											"path": "$['started_at']"
+										},
+										"sink": {
+											"path": "started_at"
+										}
+									},
+									{
+										"source": {
+											"path": "$['watermark_used']"
+										},
+										"sink": {
+											"path": "watermark_used"
+										}
+									},
+									{
+										"source": {
+											"path": "$['rows_expected']"
+										},
+										"sink": {
+											"path": "rows_expected"
+										}
+									},
+									{
+										"source": {
+											"path": "$['pages']"
+										},
+										"sink": {
+											"path": "pages"
+										}
+									},
+									{
+										"source": {
+											"path": "$['status']"
+										},
+										"sink": {
+											"path": "status"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_config_json",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_audit_json",
+								"type": "DatasetReference",
+								"parameters": {
+									"file_name": {
+										"value": "@concat(pipeline().RunId, '.json')",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"v_where": {
+						"type": "String"
+					},
+					"v_page_size": {
+						"type": "String"
+					},
+					"v_pages": {
+						"type": "String"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_config_json')]",
+				"[concat(variables('factoryId'), '/datasets/ds_state_json')]",
+				"[concat(variables('factoryId'), '/datasets/ds_http_nyc311')]",
+				"[concat(variables('factoryId'), '/datasets/ds_audit_json')]",
+				"[concat(variables('factoryId'), '/datasets/ds_rest_nyc311')]",
+				"[concat(variables('factoryId'), '/datasets/ds_bronze_json')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/poc_nyc_smoke_test')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lookup config",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "ds_config_json",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "Copy_sample_to_bronze",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Lookup config",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_rest_nyc311",
+								"type": "DatasetReference",
+								"parameters": {
+									"relative_url": {
+										"value": "@concat(activity('Lookup config').output.firstRow.sources[0].relative_url, '?$select=:*,*&$limit=100&$order=:updated_at%20DESC')",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_bronze_json",
+								"type": "DatasetReference",
+								"parameters": {
+									"folder_path": "nyc311/smoke_test",
+									"file_name": "sample.json"
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_config_json')]",
+				"[concat(variables('factoryId'), '/datasets/ds_rest_nyc311')]",
+				"[concat(variables('factoryId'), '/datasets/ds_bronze_json')]"
+			]
+		}
+	]
+}

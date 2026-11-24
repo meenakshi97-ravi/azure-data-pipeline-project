@@ -1,0 +1,18 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "adf-dateng-poc"
+		},
+		"LinkedService_http_nyc_opendata_properties_typeProperties_url": {
+			"value": "https://data.cityofnewyork.us"
+		},
+		"LinkedService_stacdateng01_properties_typeProperties_url": {
+			"value": "https://stacdateng01.dfs.core.windows.net/"
+		},
+		"LinkedServices_rest_nyc_opendata_properties_typeProperties_url": {
+			"value": "https://data.cityofnewyork.us"
+		}
+	}
+}
