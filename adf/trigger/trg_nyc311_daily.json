@@ -16,11 +16,11 @@
 			"recurrence": {
 				"frequency": "Day",
 				"interval": 1,
-				"startTime": "2026-11-24T21:00:00",
+				"startTime": "2026-11-25T00:00:00",
 				"timeZone": "Eastern Standard Time",
 				"schedule": {
 					"minutes": [
-						30
+						45
 					],
 					"hours": [
 						16
