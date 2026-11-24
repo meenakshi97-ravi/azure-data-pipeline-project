@@ -1,0 +1,236 @@
+{
+	"name": "df_nyc311_gold",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ds_silver_parquet",
+						"type": "DatasetReference"
+					},
+					"name": "srcSilver"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ds_gold_fact",
+						"type": "DatasetReference"
+					},
+					"name": "sinkFact"
+				},
+				{
+					"dataset": {
+						"referenceName": "ds_gold_dim_agency",
+						"type": "DatasetReference"
+					},
+					"name": "sinkDimAgency"
+				},
+				{
+					"dataset": {
+						"referenceName": "ds_gold_dim_problem",
+						"type": "DatasetReference"
+					},
+					"name": "sinkDimProblem"
+				},
+				{
+					"dataset": {
+						"referenceName": "ds_gold_dim_location",
+						"type": "DatasetReference"
+					},
+					"name": "sinkDimLocation"
+				},
+				{
+					"dataset": {
+						"referenceName": "ds_gold_dim_data",
+						"type": "DatasetReference"
+					},
+					"name": "sinkDimDate"
+				}
+			],
+			"transformations": [
+				{
+					"name": "fillUnkown"
+				},
+				{
+					"name": "keys"
+				},
+				{
+					"name": "selFact"
+				},
+				{
+					"name": "aggAgency"
+				},
+				{
+					"name": "aggProblem"
+				},
+				{
+					"name": "aggLocation"
+				},
+				{
+					"name": "dateBase"
+				},
+				{
+					"name": "addDate"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          updated_at as timestamp,",
+				"          row_id as string,",
+				"          address_type as string,",
+				"          agency as string,",
+				"          agency_name as string,",
+				"          bbl as long,",
+				"          borough as string,",
+				"          bridge_highway_direction as string,",
+				"          bridge_highway_name as string,",
+				"          bridge_highway_segment as string,",
+				"          city as string,",
+				"          closed_date as timestamp,",
+				"          community_board as string,",
+				"          complaint_type as string,",
+				"          council_district as short,",
+				"          created_date as timestamp,",
+				"          cross_street_1 as string,",
+				"          cross_street_2 as string,",
+				"          descriptor as string,",
+				"          descriptor_2 as string,",
+				"          due_date as timestamp,",
+				"          facility_type as string,",
+				"          incident_address as string,",
+				"          incident_zip as short,",
+				"          intersection_street_1 as string,",
+				"          intersection_street_2 as string,",
+				"          landmark as string,",
+				"          latitude as double,",
+				"          location_type as string,",
+				"          longitude as double,",
+				"          open_data_channel_type as string,",
+				"          park_borough as string,",
+				"          park_facility_name as string,",
+				"          police_precinct as string,",
+				"          resolution_action_updated_date as timestamp,",
+				"          resolution_description as string,",
+				"          road_ramp as string,",
+				"          status as string,",
+				"          street_name as string,",
+				"          taxi_company_borough as string,",
+				"          taxi_pick_up_location as string,",
+				"          unique_key as long,",
+				"          vehicle_type as string,",
+				"          x_coordinate_state_plane as integer,",
+				"          y_coordinate_state_plane as integer,",
+				"          closed_date_original as timestamp,",
+				"          dq_future_closed as boolean,",
+				"          dq_closed_before_created as boolean,",
+				"          dq_bad_coords as boolean",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false,",
+				"     format: 'parquet',",
+				"     wildcardPaths:['nyc311/*.parquet']) ~> srcSilver",
+				"srcSilver derive(agency = coalesce(agency, 'UNKNOWN'),",
+				"          agency_name = coalesce(agency_name, 'UNKNOWN'),",
+				"          complaint_type = coalesce(complaint_type, 'UNKNOWN'),",
+				"          descriptor = coalesce(descriptor, 'UNKNOWN'),",
+				"          borough = coalesce(borough, 'UNKNOWN'),",
+				"          incident_zip = coalesce(toString(incident_zip), 'UNKNOWN'),",
+				"          city = coalesce(city, 'UNKNOWN')) ~> fillUnkown",
+				"fillUnkown derive(created_date_key = toInteger(toString(created_date, 'yyyyMMdd')),",
+				"          closed_date_key = toInteger(toString(closed_date, 'yyyyMMdd')),",
+				"          agency_key = md5(agency),",
+				"          problem_key = md5(complaint_type, descriptor),",
+				"          location_key = md5(borough, incident_zip, city),",
+				"          resolution_hours = (toLong(closed_date) - toLong(created_date)) / 3600000.0) ~> keys",
+				"keys select(mapColumn(",
+				"          unique_key,",
+				"          created_date_key,",
+				"          closed_date_key,",
+				"          agency_key,",
+				"          problem_key,",
+				"          location_key,",
+				"          status,",
+				"          open_data_channel_type,",
+				"          created_date,",
+				"          closed_date,",
+				"          updated_at,",
+				"          resolution_hours,",
+				"          latitude,",
+				"          longitude,",
+				"          dq_future_closed,",
+				"          dq_closed_before_created,",
+				"          dq_bad_coords",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selFact",
+				"keys aggregate(groupBy(agency_key),",
+				"     agency = first(agency),",
+				"          agency_name = first(agency_name)) ~> aggAgency",
+				"keys aggregate(groupBy(problem_key),",
+				"     complaint_type = first(complaint_type),",
+				"          descriptor = first(descriptor)) ~> aggProblem",
+				"keys aggregate(groupBy(location_key),",
+				"     borough = first(borough),",
+				"          incident_zip = first(incident_zip),",
+				"          city = first(city)) ~> aggLocation",
+				"keys derive(date_key = created_date_key,",
+				"          calendar_date = toDate(created_date)) ~> dateBase",
+				"dateBase aggregate(groupBy(date_key),",
+				"     calendar_date = first(calendar_date)) ~> addDate",
+				"selFact sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     truncate: true,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('roundRobin', 5)) ~> sinkFact",
+				"aggAgency sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     truncate: true,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sinkDimAgency",
+				"aggProblem sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     truncate: true,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sinkDimProblem",
+				"aggLocation sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     truncate: true,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sinkDimLocation",
+				"addDate sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     truncate: true,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sinkDimDate"
+			]
+		}
+	}
+}
