@@ -45,11 +45,26 @@ Rows are fetched in pages of 10,000, ordered by `:updated_at, :id` so pages are 
 **Watermark value:** after a successful run, the watermark is set to the time the run *started*, not to the highest `:updated_at` seen. Rows changed at the source while a run is in progress could otherwise be skipped. The next run starts 60 minutes before that bookmark, so it re-reads anything changed in that gap, and the silver dedupe makes the repeats harmless. The state file is written only after every page has copied, so a failed run never moves the bookmark.
 
 
+**Observed source behaviour (20 to 25 Nov 2026):**
+
+| Run | `Lookup count` (rows changed in the 30-day window since the bookmark) |
+|---|---|
+| Evening of 20 Nov, two runs within about an hour | 0 and 0 |
+| 23 Nov, after about two days | 139,421 |
+| 25 Nov, fresh daily run | 129,929 |
+| 25 Nov, replay with the bookmark moved back about three days | 159,866 |
+
+The source does not change continuously: runs close together returned nothing, and runs a day or more apart returned over 100,000 rows. This is consistent with the dataset being refreshed in batches, but it is not proven, and the daily audit files will show the pattern over time. In every case the rolling window kept each run bounded, and a zero-row run was handled cleanly (the paging loop was skipped and the watermark and audit steps still ran).
+
+**Incident: source API returned 503 (23 Nov 2026).** The source API answered with status 503 (service unavailable) on page 5 of a 14-page run. The run failed without moving the watermark, because the watermark update only runs after every page succeeds, and nothing had to be cleaned up: pages already written to bronze are harmless, since silver keeps one row per `unique_key`. A retry policy (3 attempts, 30 seconds apart) was added to the page copy and the count lookup, [and the page loop's parallelism was reduced from 4 to 2]. The next run completed without errors.
+
 **Observed behaviour (20 Nov 2026):** a first run with the bookmark at the seed date pulled the full 30-day window (about 340,000 rows in about 34 pages). Two runs made within about an hour afterwards each returned a count of 0, and the pipeline handled that cleanly: the paging loop was skipped, and the watermark and audit steps still ran. The source may refresh in one nightly batch, but this is based on a single sample and is to be confirmed with a morning run. A run the next morning returned 128,354 changed rows across 13 pages (12 full pages of 10,000 and a last page of 8,354), and the audit file for that run matched the count.
 
 **Failure handling (23 Nov 2026):** during a run, the source API returned a temporary 503 (service unavailable) error on page 5 of 14. The run failed, and because the watermark is updated only after every page has copied, the bookmark did not move. No cleanup was needed: pages already written to bronze are harmless duplicates that the silver dedupe removes. Two changes were made in response: the page copy and the count lookup now retry up to 3 times at 30-second intervals, and the paging loop's parallelism was lowered from 4 to 2 to reduce load on the source. The re-run completed successfully and pulled the same 139,421-row window as the failed attempt, confirming the failed run left no gaps or double-counts.
 
 **Observed source behaviour (23 Nov 2026):** after runs on 20 Nov returned a count of 0, a run on 23 Nov found 139,421 changed rows in the 30-day window. The source therefore updates rows in batches rather than continuously. Whether that is one nightly batch is still unconfirmed, and the daily `rows_expected` values in the audit files will show the pattern.
+
+
 
 **Observability (Planned):** each run will also log the number of rows updated outside the window, to show how often bulk updates happen.
 
@@ -120,10 +135,13 @@ The overlap window and repeated runs mean the same request is landed in bronze m
 |---|---|---|---|
 | 21 Nov 2026 | 797,254 | 342,455 | 454,799 (about 57%) |
 | 23 Nov 2026 | [rows read from srcBronze] | 364,452 | [read minus written] |
+Evidence: `docs/screenshots/31a_replay_test.png` to `31c_replay_test.png`.
 
 Silver has 45 columns. Seven source columns were dropped: the system columns (`:created_at`, `:version`, the `:@computed_region_*` columns) and the nested `location` object, whose coordinates are already in `latitude` and `longitude`.
 
-**Known v1 limitation:** silver is rebuilt from all of bronze on every run (the sink clears its folder), and bronze grows with each run. This is simple and correct at the current scale, but reads will slow as bronze grows. **Planned improvement:** read only the new run folders and merge them into silver by `unique_key`.
+**Known v1 limitation:** silver is rebuilt from all of bronze on every run (the sink clears its folder), and bronze grows with each run. This is simple and correct at the current scale, but reads will slow as bronze grows. 
+
+**Planned improvement:** read only the new run folders and merge them into silver by `unique_key`.
 
 ## 9. Data quality rules
 
@@ -185,18 +203,43 @@ Example from a run where nothing had changed at the source:
 
 Consecutive audit files show the bookmark moving forward: each run's `watermark_used` is the previous run's start time.
 
-**Not yet recorded:** `rows_written` and `rows_rejected`. Summing row counts across parallel page copies inside the ingestion pipeline is awkward, so these will be filled in at the silver stage, where bronze and silver row counts can be compared directly.
+### Failure handling
 
-**Known limitation:** all values are stored as strings. Cast them if the audit files are queried as a table.
+The daily pipeline `poc_nyc311_daily` runs the ingest, silver and gold pipelines in order, each as an Execute Pipeline activity that waits for completion. Each stage has a failure path:
+
+1. A Copy activity writes a `Failed` audit file to `config/audit/nyc311/<run_id>_failed_<stage>.json`, containing `run_id`, `source_id`, `started_at`, `status`, `failed_step` and `error_message`.
+2. A Fail activity then fails the whole run. Without it, a handled failure would show as a succeeded run and hide the problem.
+3. Later stages do not start.
+
+**Tested:** the ingest failure path, by pointing the watermark dataset at a file name that did not exist. The ingest stage failed, the failure audit file was written with the step and error message, the Fail activity failed the run, and silver and gold did not start. The silver and gold failure paths use the same pattern but were not tested separately.
+
+**Alerting:** an Azure Monitor metric alert on failed pipeline runs is attached to an action group that sends an email. In testing, the email arrived [about N minutes] after the failed run (alert fired at 04:57 UTC on 25 Nov against a failed run at about 04:32 UTC). Metric alerts run on a schedule and the metric itself lags, so the alert is a backstop and the failure audit file is the immediate record. The alert rule costs about $0.10 per month.
+
+**Limitation:** the failure audit activities read `ds_config_json` as a carrier file, so a missing config file would break both the run and its failure record. The fix would be a dedicated carrier file.
+
+**Not yet recorded in the audit file:** `rows_written` and `rows_rejected`. Row counts are read from the data flow run diagnostics instead, and are recorded in this document.
 
 ## 11. Cost and constraints
 
 - Built on an Azure free account with a 30-day credit window that ends on 29 November 2026. All Azure-side work for this project fits inside that window.
 - Compute is kept small: Data Factory orchestration and lightweight transformations. Always-on or hourly-billed services are avoided, or used briefly and switched off.
 - Everything is stored as code in this repository, so the portfolio holds up after the Azure trial ends.
+- Peak credit use stayed well within the free credit. [CA$2.97 of CA$280 used]
 
 ## 12. Open questions
 
--Does the source refresh in one nightly batch? Partly answered: on 21 Nov, two afternoon runs returned 0 changed rows, and a run the next morning returned 128,354 changed rows (13 pages). This supports a nightly batch, but it is a single overnight sample, so it needs a few more mornings to confirm.
-- How often does the source touch old rows in bulk? The audit table will show this over time.
-- Best way to run silver transformations within the credit window (Data Flow, currently planned).
+- Does the source refresh in daily batches? Runs a day or more apart returned over 100,000 changed rows and runs an hour apart returned none, but only a few runs have been observed.
+- How often does the source touch old rows in bulk? The `rows_updated_outside_window` count was planned but not built.
+- Silver is rebuilt from all of bronze every run. Reading only the new bronze folders and merging by `unique_key` would scale better.
+- SCD Type 2 on a dimension is planned but not built.
+
+## 13. Orchestration and scheduling
+
+**Status: Built**
+
+- **Master pipeline:** `poc_nyc311_daily` runs `poc_nyc311_ingest`, then `poc_nyc311_silver`, then `poc_nyc311_gold`. Each step starts only if the previous one succeeded.
+- **Schedule:** a daily schedule trigger set in Eastern Time. It was published, fired at its scheduled time, and ran the chain, then was stopped so it would not keep using the free credit.
+- **Parameters and configuration:** the source URL path, window length, overlap, and page size come from `config/sources.json`, and the bookmark comes from `config/state/nyc311_watermark.json`, so changing the load behaviour needs no pipeline edit.
+- **Security:** Data Factory reaches the storage account through its managed identity, so no keys or passwords are stored anywhere.
+- **Source control:** the factory is connected to this GitHub repository, so pipeline, dataset and linked service definitions are stored as JSON under `adf/`.
+- **Cost control:** compute is limited to Data Factory orchestration and short data flow runs. The data flow debug session was switched off after each use.
