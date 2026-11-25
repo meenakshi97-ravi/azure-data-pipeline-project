@@ -63,6 +63,543 @@
 					},
 					"waitOnCompletion": true
 				}
+			},
+			{
+				"name": "Write failure audit ingest",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Run Ingest",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"additionalColumns": [
+							{
+								"name": "run_id",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "source_id",
+								"value": {
+									"value": "nyc311 (plain text)",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "started_at",
+								"value": {
+									"value": "@pipeline().TriggerTime",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "status",
+								"value": {
+									"value": "Failed (plain text)",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "failed_step",
+								"value": {
+									"value": "ingest (plain text)",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "error_message",
+								"value": {
+									"value": "@activity('Run Ingest').error.message",
+									"type": "Expression"
+								}
+							}
+						],
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"path": "$['run_id']"
+								},
+								"sink": {
+									"path": "run_id"
+								}
+							},
+							{
+								"source": {
+									"path": "$['source_id']"
+								},
+								"sink": {
+									"path": "source_id"
+								}
+							},
+							{
+								"source": {
+									"path": "$['started_at']"
+								},
+								"sink": {
+									"path": "started_at"
+								}
+							},
+							{
+								"source": {
+									"path": "$['status']"
+								},
+								"sink": {
+									"path": "status"
+								}
+							},
+							{
+								"source": {
+									"path": "$['failed_step']"
+								},
+								"sink": {
+									"path": "failed_step"
+								}
+							},
+							{
+								"source": {
+									"path": "$['error_message']"
+								},
+								"sink": {
+									"path": "error_message"
+								}
+							}
+						],
+						"collectionReference": ""
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_config_json",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_audit_json",
+						"type": "DatasetReference",
+						"parameters": {
+							"file_name": {
+								"value": "@concat(pipeline().RunId, '_failed_ingest.json')",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "Fail after audit ingest",
+				"type": "Fail",
+				"dependsOn": [
+					{
+						"activity": "Write failure audit ingest",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"message": {
+						"value": "@concat('Daily pipeline failed at ingest: ', activity('Run Ingest').error.message)",
+						"type": "Expression"
+					},
+					"errorCode": "IngestFailed"
+				}
+			},
+			{
+				"name": "Write failure audit silver",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Run Silver",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"additionalColumns": [
+							{
+								"name": "run_id",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "source_id",
+								"value": {
+									"value": "nyc311 (plain text)",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "started_at",
+								"value": {
+									"value": "@pipeline().TriggerTime",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "status",
+								"value": {
+									"value": "Failed (plain text)",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "failed_step",
+								"value": {
+									"value": "ingest (plain text)",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "error_message",
+								"value": {
+									"value": "@activity('Run Ingest').error.message",
+									"type": "Expression"
+								}
+							}
+						],
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"path": "$['run_id']"
+								},
+								"sink": {
+									"path": "run_id"
+								}
+							},
+							{
+								"source": {
+									"path": "$['source_id']"
+								},
+								"sink": {
+									"path": "source_id"
+								}
+							},
+							{
+								"source": {
+									"path": "$['started_at']"
+								},
+								"sink": {
+									"path": "started_at"
+								}
+							},
+							{
+								"source": {
+									"path": "$['status']"
+								},
+								"sink": {
+									"path": "status"
+								}
+							},
+							{
+								"source": {
+									"path": "$['failed_step']"
+								},
+								"sink": {
+									"path": "failed_step"
+								}
+							},
+							{
+								"source": {
+									"path": "$['error_message']"
+								},
+								"sink": {
+									"path": "error_message"
+								}
+							}
+						],
+						"collectionReference": ""
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_config_json",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_audit_json",
+						"type": "DatasetReference",
+						"parameters": {
+							"file_name": {
+								"value": "@concat(pipeline().RunId, '_failed_silver.json')",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "Fail after audit silver",
+				"type": "Fail",
+				"dependsOn": [
+					{
+						"activity": "Write failure audit silver",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"message": {
+						"value": "@concat('Daily pipeline failed at silver: ', activity('Run Silver').error.message)",
+						"type": "Expression"
+					},
+					"errorCode": "SilverFailed"
+				}
+			},
+			{
+				"name": "Write failure audit gold",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Run Gold",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"additionalColumns": [
+							{
+								"name": "run_id",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "source_id",
+								"value": {
+									"value": "nyc311 (plain text)",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "started_at",
+								"value": {
+									"value": "@pipeline().TriggerTime",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "status",
+								"value": {
+									"value": "Failed (plain text)",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "failed_step",
+								"value": {
+									"value": "ingest (plain text)",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "error_message",
+								"value": {
+									"value": "@activity('Run Ingest').error.message",
+									"type": "Expression"
+								}
+							}
+						],
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"path": "$['run_id']"
+								},
+								"sink": {
+									"path": "run_id"
+								}
+							},
+							{
+								"source": {
+									"path": "$['source_id']"
+								},
+								"sink": {
+									"path": "source_id"
+								}
+							},
+							{
+								"source": {
+									"path": "$['started_at']"
+								},
+								"sink": {
+									"path": "started_at"
+								}
+							},
+							{
+								"source": {
+									"path": "$['status']"
+								},
+								"sink": {
+									"path": "status"
+								}
+							},
+							{
+								"source": {
+									"path": "$['failed_step']"
+								},
+								"sink": {
+									"path": "failed_step"
+								}
+							},
+							{
+								"source": {
+									"path": "$['error_message']"
+								},
+								"sink": {
+									"path": "error_message"
+								}
+							}
+						],
+						"collectionReference": ""
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_config_json",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_audit_json",
+						"type": "DatasetReference",
+						"parameters": {
+							"file_name": {
+								"value": "@concat(pipeline().RunId, '_failed_gold.json')",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "Fail after audit gold",
+				"type": "Fail",
+				"dependsOn": [
+					{
+						"activity": "Write failure audit gold",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"message": {
+						"value": "@concat('Daily pipeline failed at gold: ', activity('Run Gold').error.message)",
+						"type": "Expression"
+					},
+					"errorCode": "GoldFailed"
+				}
 			}
 		],
 		"annotations": []
