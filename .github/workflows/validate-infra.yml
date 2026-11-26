@@ -1,0 +1,29 @@
+name: Validate infrastructure and config
+
+on:
+  push:
+    paths:
+      - 'infra/**'
+      - 'config/**'
+      - 'adf/**'
+      - '.github/workflows/validate-infra.yml'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Build the Bicep file
+        run: az bicep build --file infra/main.bicep --stdout > /dev/null
+
+      - name: Check that JSON files are valid
+        run: |
+          status=0
+          for f in $(find infra config adf -name '*.json' 2>/dev/null); do
+            python3 -m json.tool "$f" > /dev/null || { echo "Invalid JSON: $f"; status=1; }
+          done
+          exit $status
