@@ -243,3 +243,15 @@ The daily pipeline `poc_nyc311_daily` runs the ingest, silver and gold pipelines
 - **Security:** Data Factory reaches the storage account through its managed identity, so no keys or passwords are stored anywhere.
 - **Source control:** the factory is connected to this GitHub repository, so pipeline, dataset and linked service definitions are stored as JSON under `adf/`.
 - **Cost control:** compute is limited to Data Factory orchestration and short data flow runs. The data flow debug session was switched off after each use.
+
+## 14. Infrastructure as code
+
+**Status: Written and checked with what-if, not deployed**
+
+`infra/main.bicep` defines the lake and the factory: a storage account with hierarchical namespace (Data Lake Gen2), LRS replication and no public blob access, the four containers (`bronze`, `silver`, `gold`, `config`), a Data Factory with a system-assigned managed identity, and the role assignment that lets the factory read and write storage without keys. Names are parameters in `infra/main.parameters.json`.
+
+**Checked** with `az deployment group what-if` against the live resource group, which showed [summarise what you saw, for example "no changes to storage, a modify on the factory, and a create for the role assignment"]. It was deliberately not deployed to the live resource group.
+
+**Not covered:** the Git connection on the factory, the linked services, datasets, pipelines and data flows (these are stored as JSON under `adf/` and synchronised through the factory's Git integration), the schedule trigger, and the Azure Monitor alert.
+
+**Why not deployed:** the live factory has Git connected and its role assignment was created by hand, so a deployment would try to recreate the assignment and could reset the factory's Git settings.
