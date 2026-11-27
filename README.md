@@ -4,7 +4,7 @@
 
 An end-to-end batch pipeline on Azure that pulls a large, constantly changing public dataset (NYC 311 service requests) through an API, loads it incrementally into a bronze, silver and gold lake, and serves a star schema with a Power BI dashboard on top. Built by Meenakshi Ravi.
 
-![Dashboard](docs/screenshots/36a_dashboard.png)
+![Dashboard](docs/screenshots/36_dashboard.png)
 
 ## At a glance
 
